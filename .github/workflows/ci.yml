@@ -22,9 +22,21 @@ env:
   RECOLNAT_REGISTRY: dfgxr43v.c1.gra9.container-registry.ovh.net
 
 jobs:
-  build-jar:
-    name: Build JAR
+  build-and-publish:
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment:
+          - name: prod
+            branch: main
+            tag: prod
+          - name: preprod
+            branch: staging
+            tag: rc
+          - name: test
+            branch: develop
+            tag: test 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,37 +51,6 @@ jobs:
         run: |
           export APP_VERSION="origin"
           mvn $MAVEN_CLI_OPTS -Drevision=$APP_VERSION clean install -f ./pom.xml
-
-      - name: Save JAR as artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: keycloak-recolnat-login-theme
-          path: ./target/keycloak-recolnat-login-theme.jar
-
-  docker-publish:
-    name: Build and Push Docker Image
-    needs: build-jar
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        environment:
-          - name: prod
-            branch: main
-            tag: prod
-          - name: preprod
-            branch: staging
-            tag: rc
-          - name: test
-            branch: develop
-            tag: test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download JAR artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: keycloak-recolnat-login-theme
 
       - name: Log in to Docker registry
         if: github.ref_name == matrix.environment.branch
