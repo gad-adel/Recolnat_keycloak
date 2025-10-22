@@ -63,7 +63,7 @@ jobs:
         run: mvn $MAVEN_CLI_OPTS -Drevision=${{ env.APP_VERSION }} clean package -DskipTests -f ./pom.xml
       
       - name: Build Docker image
-        run: docker build -t ${{ env.RECOLNAT_REGISTRY }}/recolnat/keycloak:${{ matrix.environment.tag }} -f Dockerfile .
+        run: docker build -t ${{ env.RECOLNAT_REGISTRY }}/recolnat/keycloak:${{ github.sha }} -f Dockerfile .
       
       - name: Log in to Docker registry
         run: docker login ${{ env.RECOLNAT_REGISTRY }} -u 'robot$recolnat-ci' -p ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
