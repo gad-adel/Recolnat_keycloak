@@ -69,4 +69,4 @@ jobs:
         run: docker login ${{ env.RECOLNAT_REGISTRY }} -u 'robot$recolnat-ci' -p ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
 
       - name: Push Docker image
-        run: docker push ${{ env.RECOLNAT_REGISTRY }}/recolnat/keycloak:${{ matrix.environment.tag }}
+        run: docker push ${{ env.RECOLNAT_REGISTRY }}/recolnat/keycloak:${{ env.APP_VERSION }}
