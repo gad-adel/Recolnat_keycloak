@@ -22,21 +22,10 @@ env:
   RECOLNAT_REGISTRY: dfgxr43v.c1.gra9.container-registry.ovh.net
 
 jobs:
-  build-and-publish:
-    name: Build and Push Docker Image
+  build-and-push:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        environment:
-          - name: prod
-            branch: main
-            tag: prod
-          - name: preprod
-            branch: staging
-            tag: rc
-          - name: test
-            branch: develop
-            tag: test 
+    env:
+      RECOLNAT_REGISTRY: dfgxr43v.c1.gra9.container-registry.ovh.net
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,21 +36,37 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build JAR
+      - name: Set app version
+        id: set-version
         run: |
-          export APP_VERSION="origin"
-          mvn $MAVEN_CLI_OPTS -Drevision=$APP_VERSION clean install -f ./pom.xml
+          if [[ "${{ github.ref_name }}" == "develop" ]]; then
+            echo "APP_VERSION=dev" >> $GITHUB_ENV
+          elif [[ "${{ github.ref_name }}" == "staging" ]]; then
+            echo "APP_VERSION=rc" >> $GITHUB_ENV
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "APP_VERSION=prod" >> $GITHUB_ENV
+          else
+            echo "APP_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi      
 
+      - name: Map Nexus domain in /etc/hosts
+        run: echo "51.210.167.37 dinsi-nexus.mnhn.cloud" | sudo tee -a /etc/hosts
+      
+      - name: Generate and add Nexus certificate to trust store
+        run: |
+          echo | openssl s_client -showcerts -servername dinsi-nexus.mnhn.cloud -connect 51.210.167.37:443 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > nexus-cert.pem
+          sudo cp nexus-cert.pem /usr/local/share/ca-certificates/nexus-cert.crt
+          sudo update-ca-certificates
+          sudo keytool -import -trustcacerts -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit -noprompt -alias nexus-cert -file nexus-cert.pem
+
+      - name: Build JAR
+        run: mvn $MAVEN_CLI_OPTS -Drevision=${{ env.APP_VERSION }} clean package -DskipTests -f ./pom.xml
+      
+      - name: Build Docker image
+        run: docker build -t ${{ env.RECOLNAT_REGISTRY }}/recolnat/keycloak:${{ matrix.environment.tag }} -f Dockerfile .
+      
       - name: Log in to Docker registry
-        if: github.ref_name == matrix.environment.branch
         run: docker login ${{ env.RECOLNAT_REGISTRY }} -u 'robot$recolnat-ci' -p ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
 
-      - name: Build Docker image
-        if: github.ref_name == matrix.environment.branch
-        run: |
-          export APP_VERSION="${{ matrix.environment.tag }}"
-          docker build -t ${{ env.RECOLNAT_REGISTRY }}/recolnat/keycloak:${{ matrix.environment.tag }} -f Dockerfile .
-
       - name: Push Docker image
-        if: github.ref_name == matrix.environment.branch
         run: docker push ${{ env.RECOLNAT_REGISTRY }}/recolnat/keycloak:${{ matrix.environment.tag }}
