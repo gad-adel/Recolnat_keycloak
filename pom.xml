@@ -1,0 +1,135 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>recolnat.org</groupId>
+  <artifactId>keycloak</artifactId>
+  <version>${revision}</version>
+  <name>keycloak-mnhn</name>
+  <description>Keycloak recolnat Theme</description>
+  <properties>
+   <revision>0.0.1-SNAPSHOT</revision>
+   <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+   <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+   <keycloak.version>23.0.3</keycloak.version>
+   <maven.compiler.release>17</maven.compiler.release>
+   <docker.registry>https://nexus.mnhn.fr/</docker.registry>
+   <docker.image.name>${project.name}:${keycloak.version}</docker.image.name>
+  </properties>
+  <profiles>
+	 <profile>
+      <id>current</id>
+      <activation>
+            <activeByDefault>true</activeByDefault>
+        </activation>
+		<build>
+	    <finalName>keycloak-recolnat-login-theme</finalName>
+	    <plugins>
+		  <plugin>
+	        <groupId>org.apache.maven.plugins</groupId>
+	        <artifactId>maven-resources-plugin</artifactId>
+	        <version>3.3.1</version>
+	        <configuration>
+	          <encoding>UTF-8</encoding>
+	        </configuration>
+		  </plugin>
+ 		</plugins>
+		</build>
+     </profile>
+     <profile>
+     <id>generatelocal</id>
+       <activation>
+            <activeByDefault>false</activeByDefault>
+        </activation>
+     <build>
+	   <finalName>keycloak-recolnat-login-theme</finalName>
+	    <plugins>
+		  <plugin>
+	        <groupId>org.apache.maven.plugins</groupId>
+	        <artifactId>maven-resources-plugin</artifactId>
+	        <version>3.3.1</version>
+	        <configuration>
+	          <encoding>UTF-8</encoding>
+	        </configuration>
+	      </plugin>
+	       <plugin>
+  			<groupId>org.codehaus.mojo</groupId>
+			<artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.1</version>
+			<executions>
+			 <!-- supression d eventuel image existante du repo local  voir https://docs.docker.com/engine/reference/commandline/rmi/
+			si vous avez une erreur du type : Error response from daemon: conflict: unable to remove repository reference "keycloak-mnhn.XX.XX.XX" (must force) - containerxxxx is using its referenced image 
+			alors supprimer auparavant le container, dans votre docker local, employant l'image 'keycloak-mnhn'
+		
+				 <execution>
+					<id>docker-clean</id>
+					<phase>install</phase>
+					 <goals>
+						<goal>exec</goal>
+					 </goals>
+					<configuration>
+						<executable>docker</executable>
+						<workingDirectory>${project.basedir}</workingDirectory>
+						<arguments>
+						<argument>rmi</argument>
+				   			<argument>${docker.image.name}</argument>
+						</arguments>
+					</configuration>
+			</execution
+		
+		
+		 cree une nouvelle image  docker image en employant le fichier Dockerfile qui doit etre present a la racine du projet
+				le tag est base sur la version de keycloak voir https://docs.docker.com/engine/reference/commandline/build/
+		 image cree: keycloak-mnhn:23.0.3
+		  -->
+			<execution>
+				<id>docker-build</id>
+				<phase>install</phase>
+				<goals>
+					<goal>exec</goal>
+				</goals>
+				<configuration>
+					<executable>docker</executable>
+					<workingDirectory>${project.basedir}</workingDirectory>
+					<arguments>
+						 <argument>build</argument>
+						 <argument>--build-arg</argument>
+						 <argument>VERSION=${keycloak.version}</argument>
+						 <argument>-t</argument>
+						<argument>${docker.image.name}</argument>
+						 <argument>.</argument>
+					</arguments>
+				</configuration>
+			 </execution>
+        <!-- Login et pousse l'image vers le referentiel docker image-->
+			 <execution>
+				 <id>docker-login</id>
+				 <phase>deploy</phase>
+				 <goals>
+					<goal>exec</goal>
+				 </goals>
+				 <configuration>
+						<executable>docker</executable>
+						<workingDirectory>${project.basedir}</workingDirectory>
+				</configuration>
+			</execution>
+			<execution>
+				 <id>docker-push</id>
+				<phase>deploy</phase>
+				<goals>
+				 <goal>exec</goal>
+				 </goals>
+				<configuration>
+					<executable>docker</executable>
+					 <workingDirectory>${project.basedir}</workingDirectory>
+					 <arguments>
+						<argument>push</argument>
+						<argument>${project.groupId}/${docker.image.name}</argument>
+					</arguments>
+				</configuration>
+			</execution> 
+		 </executions>
+	   </plugin>
+     </plugins>
+   </build>
+  </profile>
+ </profiles>
+</project>

@@ -1,0 +1,6 @@
+{
+    "themes": [{
+        "name" : "recolnat",
+        "types": ["admin", "login", "email"]
+    }]
+}

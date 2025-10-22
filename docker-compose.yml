@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+    keycloak:
+      container_name: keycloak_test
+      image: keycloak-mnhn:23.0.3
+      command: ['start-dev']
+      environment:
+        KC_HEALTH_ENABLED: true
+        KC_HTTP_ENABLED: true
+        KC_METRICS_ENABLED: true
+        KC_LOG_LEVEL: DEBUG
+        KEYCLOAK_ADMIN: admin
+        KEYCLOAK_ADMIN_PASSWORD: admin
+      ports:
+        - "8089:8080"
+        - "9990:9990" # debug port
+      networks:
+        - keycloakTest
+        
+
+networks:
+    keycloakTest:
+        driver: bridge
+

@@ -1,0 +1,103 @@
+variables:
+  PROJECT_CI: keycloak-mnhm
+  MAVEN_CLI_OPTS: "-s .m2/settings.xml --batch-mode"
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+
+  # Instruct Testcontainers to use the daemon of DinD.
+  DOCKER_HOST: "tcp://docker:2375"
+  # Instruct Docker not to start over TLS.
+  DOCKER_TLS_CERTDIR: ""
+  # Improve performance with overlayfs.
+  DOCKER_DRIVER: overlay2
+  RECOLNAT_VERSION: 1.0.0
+  APP_VERSION: ""
+
+
+stages:
+  - build-jar
+  - docker-publish
+
+## DinD service is required for Testcontainers
+services:
+  - name: docker:dind
+    # explicitly disable tls to avoid docker startup interruption
+    command: ["--tls=false"]
+
+
+
+build-jar:
+  stage: build-jar
+  image: 
+    name: maven:3-openjdk-17-slim
+  script:
+    - export APP_VERSION="origin"
+    - mvn $MAVEN_CLI_OPTS -Drevision=$APP_VERSION clean install -f ./pom.xml
+  artifacts:
+    paths:
+      - ./target/keycloak-recolnat-login-theme.jar
+
+
+
+
+docker-publish-prod:
+  stage: docker-publish
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  variables:
+    RECOLNAT_REGISTRY_TAG: prod
+
+  script:
+    - export APP_VERSION="prod"
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${RECOLNAT_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${RECOLNAT_REGISTRY_USER}" "${RECOLNAT_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${RECOLNAT_REGISTRY}/recolnat/keycloak:${RECOLNAT_REGISTRY_TAG}"
+
+  only:
+    - main   
+
+docker-publish-preprod:
+  stage: docker-publish
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  variables:
+    RECOLNAT_REGISTRY_TAG: rc
+
+  script:
+    - export APP_VERSION="rc"
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${RECOLNAT_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${RECOLNAT_REGISTRY_USER}" "${RECOLNAT_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${RECOLNAT_REGISTRY}/recolnat/keycloak:${RECOLNAT_REGISTRY_TAG}"
+
+  only:
+    - staging 
+
+docker-publish-test:
+  stage: docker-publish
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  variables:
+    RECOLNAT_REGISTRY_TAG: test
+
+  script:
+    - export APP_VERSION="test"
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${RECOLNAT_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${RECOLNAT_REGISTRY_USER}" "${RECOLNAT_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${RECOLNAT_REGISTRY}/recolnat/keycloak:${RECOLNAT_REGISTRY_TAG}"
+
+  only:
+    - develop 

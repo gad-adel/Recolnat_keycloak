@@ -1,0 +1,2 @@
+import{cU as n}from"./index-sihFV1NS.js";const t=async({id:e,type:s,first:i,max:o,search:a,endpoint:c})=>n(`/ui-ext/${c}/${s}/${e}`,{first:(i||0).toString(),max:(o||10).toString(),search:a||""}),f=e=>t({...e,endpoint:"available-roles"}),l=e=>t({...e,endpoint:"effective-roles"}),d=e=>n("ui-ext/brute-force-user",e),g=e=>t({...e,endpoint:"authentication-management"});export{f as a,d as b,g as f,l as g};
+//# sourceMappingURL=resource-BRtaBrSc.js.map
